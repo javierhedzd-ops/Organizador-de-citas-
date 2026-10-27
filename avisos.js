@@ -75,7 +75,7 @@ function textoAviso(citas, hoyISO, opciones = {}) {
 // y a los dos hay que avisarles.
 function companeras(citas, cita) {
   if (!cita || !cita.fecha) return [];
-  return delDia(citas, cita.fecha).filter((c) => c !== cita);
+  return delDia(citas, cita.fecha).filter((c) => c !== cita && !c.cancelada);
 }
 
 // El mensaje para los demás clientes del día. Devuelve null si no hay a quién avisar.

@@ -365,7 +365,7 @@
     div.innerHTML = `<div class="titulo">${titulo}</div>${items ? `<ul>${items}</ul>` : ''}${viene}`;
 
     // El mismo texto que se manda por WhatsApp, para copiarlo y pegarlo.
-    const texto = textoAviso(citas, hoy, { dias: 7 });
+    const texto = textoAviso(citas.filter((c) => !c.cancelada), hoy, { dias: 7 });
     if (texto) {
       const fila = document.createElement('div');
       fila.className = 'fila-aviso';
@@ -629,6 +629,8 @@
     const p = document.getElementById('aviso-editar');
     p.textContent = texto;
     p.style.display = 'block';
+    // Si el formulario está cerrado, el aviso no se vería: se abre.
+    if (cajaFormulario && !cajaFormulario.open) cajaFormulario.open = true;
     clearTimeout(temporizadorAviso);
     temporizadorAviso = setTimeout(() => { if (editando === null) p.style.display = 'none'; }, 4000);
   }
@@ -639,7 +641,11 @@
 
   function agregar() {
     const texto = entrada.value.trim();
-    if (!texto) { entrada.focus(); return; }
+    if (!texto) {
+      avisar('Escribe la cita arriba, por ejemplo: sábado 3pm, colonia Chuburná, doña Mari.');
+      entrada.focus();
+      return;
+    }
     try {
       const cita = entender(texto);
       const citas = cargar();
@@ -673,7 +679,8 @@
   };
 
   // Arma la cita con lo que hay en los campos. Devuelve null si no hay nada escrito.
-  function citaDesdeFormulario() {
+  // base: la cita que se está editando (para no perder anticipo ni cancelada).
+  function citaDesdeFormulario(base) {
     const fecha = campos.fecha.value;
     const hora = campos.hora.value;
     const lugar = campos.lugar.value.trim();
@@ -691,6 +698,8 @@
     const anticipo = campos.anticipo.value ? Number(campos.anticipo.value) : 0;
 
     const cita = {
+      // Lo que no está en el formulario y no se debe perder al editar.
+      ...(base || {}),
       textoOriginal: [fecha, hora, lugar, cliente].filter(Boolean).join(', '),
       fecha: fecha || null,
       fechaBonita: fecha ? fechaBonita(fecha) : null,
@@ -715,6 +724,7 @@
   function agregarDesdeFormulario() {
     const cita = citaDesdeFormulario();
     if (!cita) {
+      avisar('No hay nada escrito: llena al menos la fecha, la hora o el lugar.');
       campos.fecha.focus();
       return;
     }
@@ -752,6 +762,7 @@
     campos.tipo.value = c.tipo || 'rezo';
     campos.telefono.value = c.telefono || '';
     campos.precio.value = c.precio !== null && c.precio !== undefined ? c.precio : '';
+    campos.anticipo.value = c.anticipo ? c.anticipo : '';
 
     cajaFormulario.open = true;
     resumenFormulario.textContent = 'Editando la cita';
@@ -779,15 +790,15 @@
   }
 
   function guardarEdicion() {
-    const nueva = citaDesdeFormulario();
+    const citas = ordenar(cargar());
+    const vieja = citas[editando];
+    if (!vieja) { cancelarEdicion(); pintar(); return; }
+    const nueva = citaDesdeFormulario(vieja);
     if (!nueva) {
       avisar('No hay nada escrito: escribe al menos la fecha, la hora o el lugar.');
       campos.fecha.focus();
       return;
     }
-    const citas = ordenar(cargar());
-    const vieja = citas[editando];
-    if (!vieja) { cancelarEdicion(); pintar(); return; }
     // Lo que no se tocó en el formulario se conserva (anticipo, cancelada, teléfono...).
     citas[editando] = { ...vieja, ...nueva };
     guardar(citas);
