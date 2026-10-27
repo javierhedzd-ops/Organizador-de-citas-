@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icono.svg" type="image/svg+xml">
+<title>Citas del tío de Fer</title>
+<style>
+  :root {
+    --fondo: #0d1117;
+    --panel: #161b22;
+    --panel2: #1c2430;
+    --borde: #2a3441;
+    --texto: #e6edf3;
+    --suave: #8b98a5;
+    --acento: #4cc2ff;
+    --ok: #3fb950;
+    --duda: #d29922;
+    --error: #f85149;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+    padding: 16px 14px 40px;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.35rem; margin: 0 0 2px; letter-spacing: -0.02em; }
+  .sub { color: var(--suave); font-size: 0.85rem; margin: 0 0 18px; }
+  label { display: block; font-size: 0.8rem; color: var(--suave); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+  textarea {
+    width: 100%;
+    min-height: 84px;
+    background: var(--panel);
+    color: var(--texto);
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 12px;
+    font: inherit;
+    resize: vertical;
+  }
+  textarea:focus { outline: 2px solid var(--acento); outline-offset: 1px; border-color: transparent; }
+  .fila { display: flex; gap: 8px; margin-top: 10px; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    border-radius: 12px;
+    border: 1px solid var(--borde);
+    background: var(--panel2);
+    color: var(--texto);
+    padding: 12px 16px;
+    cursor: pointer;
+    min-height: 46px;
+  }
+  button:active { transform: scale(0.98); }
+  button.principal { background: var(--acento); color: #04121c; border-color: transparent; flex: 1; }
+  .ejemplos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .ejemplos button { font-size: 0.78rem; font-weight: 500; padding: 7px 10px; min-height: 0; color: var(--suave); border-radius: 999px; }
+  .tarjeta {
+    background: var(--panel);
+    border: 1px solid var(--borde);
+    border-left: 4px solid var(--ok);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-top: 12px;
+  }
+  .tarjeta.dudosa { border-left-color: var(--duda); }
+  .tarjeta .cuando { font-size: 1.05rem; font-weight: 700; }
+  .tarjeta .cuando .hora { color: var(--acento); }
+  .tarjeta .quien { color: var(--texto); margin-top: 2px; }
+  .tarjeta .donde { color: var(--suave); font-size: 0.9rem; margin-top: 2px; }
+  .etiqueta {
+    display: inline-block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--panel2);
+    color: var(--suave);
+    margin-right: 6px;
+  }
+  .dudas { margin: 8px 0 0; padding-left: 18px; color: var(--duda); font-size: 0.85rem; }
+  .acciones { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .acciones a, .acciones button {
+    font-size: 0.85rem;
+    padding: 9px 12px;
+    min-height: 0;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .acciones a.maps { background: #1f6feb; border-color: transparent; color: #fff; font-weight: 600; }
+  .acciones button.borrar { color: var(--error); }
+  .tarjeta.editando { border-left-color: var(--acento); background: var(--panel2); }
+  .tarjeta .editando-aviso { color: var(--acento); font-size: 0.8rem; font-weight: 600; margin-top: 8px; }
+  .fila button.cancelar { flex: 0 0 auto; color: var(--suave); }
+  .vacio { color: var(--suave); font-size: 0.9rem; margin-top: 22px; text-align: center; }
+  h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--suave); margin: 26px 0 4px; font-weight: 600; }
+  .aviso { font-size: 0.8rem; color: #a8b3bf; margin-top: 26px; border-top: 1px solid var(--borde); padding-top: 12px; }
+
+  /* El aviso del día: lo primero que ve al abrir */
+  .hoy {
+    background: linear-gradient(180deg, #16324a, var(--panel));
+    border: 1px solid #2f5d80;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 6px;
+  }
+  .hoy .titulo { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
+  .hoy ul { margin: 0; padding-left: 18px; }
+  .hoy li { margin: 3px 0; font-size: 0.92rem; }
+  .hoy li .hora { color: var(--acento); font-weight: 700; }
+  .hoy .viene { color: var(--suave); font-size: 0.85rem; margin-top: 8px; }
+  .hoy .viene b { color: var(--texto); font-weight: 600; }
+  .hoy button.copiar { margin-top: 10px; font-size: 0.8rem; padding: 8px 12px; min-height: 0; }
+  .fila-aviso { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .fila-aviso .copiar { margin-top: 0; }
+  .hoy a.copiar.wa {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.8rem; padding: 8px 12px; border-radius: 8px;
+    background: #1f6f43; color: #eafff2; border: 1px solid #2f8a57;
+    text-decoration: none; font-weight: 600;
+  }
+  .hoy a.copiar.wa:active { background: #185a36; }
+  .hoy.libre { background: var(--panel); border-color: var(--borde); }
+  .hoy.libre .titulo { color: var(--suave); font-weight: 600; }
+
+  details { margin-top: 14px; }
+  summary {
+    cursor: pointer;
+    color: var(--acento);
+    font-size: 0.9rem;
+    padding: 10px 0;
+    list-style: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: '+ '; font-weight: 700; }
+  details[open] summary::before { content: '− '; }
+  .formulario {
+    background: var(--panel);
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 14px;
+    margin-top: 4px;
+  }
+  .campo { margin-bottom: 12px; }
+  .campo label { margin-bottom: 4px; }
+  input, select {
+    width: 100%;
+    background: var(--panel2);
+    color: var(--texto);
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 11px 12px;
+    font: inherit;
+    min-height: 46px;
+  }
+  input:focus, select:focus { outline: 2px solid var(--acento); outline-offset: 1px; border-color: transparent; }
+  input::placeholder { color: #6b7885; }
+</style>
+
+  <style>
+    .panel-mover { border: 1px solid var(--acento); border-radius: 12px; padding: 14px; margin: 18px 0; background: var(--panel); }
+    .panel-mover h3 { margin: 0 0 6px; }
+    .mover-explica { margin: 0 0 10px; color: var(--suave); font-size: 0.85rem; }
+    .aviso-mover { border-top: 1px solid var(--borde); padding-top: 10px; margin-top: 10px; }
+    .aviso-quien { font-weight: 600; margin-bottom: 6px; }
+    .aviso-texto { width: 100%; box-sizing: border-box; font: inherit; font-size: 0.9rem; padding: 8px; background: var(--panel2); color: var(--texto); border: 1px solid var(--borde); border-radius: 8px; resize: vertical; }
+    .copiar-aviso { margin-top: 6px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--borde); background: var(--panel2); color: var(--texto); font: inherit; cursor: pointer; }
+    .ok-mover { color: var(--ok); font-weight: 600; }
+    .error-mover { color: var(--error); font-weight: 600; }
+    .anticipo { font-size: 0.8rem; color: var(--duda); margin-top: 4px; }
+    .movida { font-size: 0.8rem; color: var(--suave); font-style: italic; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <h1>Citas del tío de Fer</h1>
+  <p class="sub">Escribe la cita como se la mandarías por WhatsApp. El sistema la ordena y te da el botón de Maps.</p>
+
+  <label for="entrada">La cita</label>
+  <textarea id="entrada" placeholder="sábado 3pm, colonia Chuburná, doña Mari"></textarea>
+  <div class="fila">
+    <button class="principal" id="agregar">Agregar cita</button>
+    <button id="pegar-cliente">Pegar mensaje del cliente</button>
+  </div>
+  <p class="sub" id="pegar-aviso" style="display:none; margin:8px 0 0;"></p>
+  <div class="ejemplos" id="ejemplos"></div>
+
+  <details id="caja-formulario">
+    <summary id="resumen-formulario">O llenar los campos uno por uno</summary>
+    <div class="formulario">
+      <p class="editando-aviso" id="aviso-editar" style="display:none; margin:0 0 4px;"></p>
+      <div class="campo">
+        <label for="f-fecha">Fecha</label>
+        <input type="date" id="f-fecha">
+      </div>
+      <div class="campo">
+        <label for="f-hora">Hora</label>
+        <input type="time" id="f-hora">
+      </div>
+      <div class="campo">
+        <label for="f-lugar">Lugar</label>
+        <input type="text" id="f-lugar" placeholder="colonia Chuburná" autocomplete="off">
+      </div>
+      <div class="campo">
+        <label for="f-cliente">Cliente</label>
+        <input type="text" id="f-cliente" placeholder="doña Mari" autocomplete="off">
+      </div>
+      <div class="campo">
+        <label for="f-tipo">Tipo</label>
+        <select id="f-tipo">
+          <option value="rezo">Rezo</option>
+          <option value="novena">Novena</option>
+          <option value="velorio">Velorio</option>
+          <option value="misa">Misa</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="f-telefono">Teléfono</label>
+        <input type="tel" id="f-telefono" placeholder="9991234567" inputmode="tel" autocomplete="off">
+      </div>
+      <div class="campo">
+        <label for="f-precio">Precio</label>
+        <input type="number" id="f-precio" placeholder="1500" inputmode="numeric" min="0">
+      </div>
+      <div class="campo">
+        <label for="f-anticipo">Anticipo que ya le dieron</label>
+        <input type="number" id="f-anticipo" placeholder="0" inputmode="numeric" min="0">
+      </div>
+      <div class="fila">
+        <button class="principal" id="agregar-formulario">Guardar cita</button>
+        <button class="cancelar" id="cancelar-edicion" style="display:none">Cancelar</button>
+      </div>
+    </div>
+  </details>
+
+
+  <!-- Mover una cita: elige la fecha nueva y salen los mensajes para avisar -->
+  <div id="panel-mover" class="panel-mover" style="display:none">
+    <h3 id="mover-titulo">Mover la cita</h3>
+    <p id="mover-explica" class="mover-explica"></p>
+    <div class="campo">
+      <label for="mover-fecha">Fecha nueva</label>
+      <input type="date" id="mover-fecha">
+    </div>
+    <div class="fila">
+      <button class="principal" id="mover-hacer">Mover y ver a quién avisar</button>
+      <button class="cancelar" id="mover-cerrar">Cerrar</button>
+    </div>
+    <div id="mover-resultado"></div>
+  </div>
+
+  <h2>Sus citas</h2>
+  <div id="aviso-hoy"></div>
+  <div id="lista"></div>
+  <p class="vacio" id="vacio">Todavía no hay citas. Escribe una arriba.</p>
+
+  <p class="aviso">Prototipo: entiende la cita sin internet y sin IA. Si no entiende la fecha, la hora o el lugar, te lo dice en amarillo en vez de inventarlo.</p>
+
+<script src="entender.js"></script>
+<script src="avisos.js"></script>
+<script src="mover.js"></script>
+<script src="zonas.js"></script>
+<script>
+  // Sin desestructurar: esas funciones ya son globales (vienen de entender.js, avisos.js
+  // y mover.js) y volver a declararlas con const rompe la página entera.
+  // Todo se usa como window.X.funcion: nada de const con esos nombres.
+  // --- Lector del mensaje del cliente (copiado de mensaje.js) ---
+  // Leer el mensaje que manda un cliente por WhatsApp y sacar de ahí la cita.
+  // Sin internet y sin IA: reglas. Si algo no se entiende, se marca en `dudas`.
+  //
+  // Lo que pidió Javi (27/10/2026): el cliente manda nombre, servicio, dirección
+  // escrita y su ubicación; el sistema arma la cita solo y nosotros solo
+  // confirmamos la hora.
+  //
+  // Un mensaje típico de WhatsApp:
+  //   "Buenas tardes, soy doña Mari, quiero un rezo para mi mamá el sábado a las 3pm
+  //    en la colonia Chuburná, calle 60 #123 x 25 y 27
+  //    https://maps.google.com/?q=21.03,-89.62"
+  // De ahí salen: cliente, tipo, fecha, hora, lugar y las coordenadas.
+
+  // (En la página, Entender ya está cargado arriba.)
+
+  // Los enlaces de ubicación que manda WhatsApp (o Google Maps) con coordenadas.
+  // Se aceptan los tres formatos que salen de verdad:
+  //   https://maps.google.com/?q=21.03,-89.62
+  //   https://www.google.com/maps/@21.03,-89.62,17z
+  //   https://maps.app.goo.gl/xxxx  (enlace corto: no trae coordenadas)
+  const RE_COORDENADAS = [
+    /[?&](?:q|query|ll|center|daddr)=(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/i,
+    /@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/,
+    /!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/,
+  ];
+
+  // Saca las coordenadas de un texto (o null si no hay).
+  function sacarUbicacion(texto) {
+    const t = String(texto || '');
+    for (const re of RE_COORDENADAS) {
+      const m = t.match(re);
+      if (m) {
+        const lat = Number(m[1]);
+        const lon = Number(m[2]);
+        // Que sean coordenadas de verdad (Mérida está en 20.9, -89.6).
+        if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180) return { lat, lon };
+      }
+    }
+    return null;
+  }
+
+  // Quita del texto los enlaces (para que no ensucien la dirección ni el nombre).
+  function sinEnlaces(texto) {
+    return String(texto || '').replace(/https?:\/\/\S+/gi, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  // El nombre del cliente en un mensaje de WhatsApp: "soy doña Mari", "le escribe
+  // la Sra. López", "mi nombre es Juan Pérez". Si no viene, se usa el de entender.js.
+  function sacarNombreCliente(texto) {
+    const t = String(texto || '');
+    const patrones = [
+      /\b(?:soy|me llamo|mi nombre es|le (?:escribe|habla)|habla)\s+((?:doña|dona|don|señora|senora|sra\.?|sr\.?|familia)\s+[A-ZÁÉÍÓÚÑa-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)?)/i,
+      /\b(?:soy|me llamo|mi nombre es|le (?:escribe|habla)|habla)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)?)/,
+    ];
+    for (const re of patrones) {
+      const m = t.match(re);
+      if (m) return m[1].trim().replace(/\s+/g, ' ');
+    }
+    return null;
+  }
+
+  // El servicio: "rezo", "misa", "novena", "velorio". Se apoya en entender.js.
+  function sacarServicio(texto) {
+    const t = String(texto || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (/\bvelorio|\bvelacion|\bvelando/.test(t)) return 'velorio';
+    if (/\bnovena|\bnovenario/.test(t)) return 'novena';
+    if (/\bmisa|\bfuneral|\bentierro|\bsepelio/.test(t)) return 'misa';
+    if (/\brezo|\brosario|\brezadera|\boracion/.test(t)) return 'rezo';
+    return null;
+  }
+
+  // La dirección escrita: lo que va después de "en" o "calle/colonia/fracc.".
+  // Se apoya en entender.js (sacarLugar) y se le añade el número de casa si viene.
+  function sacarDireccion(texto) {
+    const limpio = sinEnlaces(texto);
+    const base = Entender.entender(limpio, { hoy: new Date(2026, 0, 1) });
+    let lugar = base.lugar;
+    // "calle 60 #123 x 25 y 27": el número de casa se queda con la dirección.
+    const conNumero = limpio.match(/\b((?:calle|avenida|ave\.?|c\.)\s*\d+[a-z]?\s*(?:#|no\.?|num\.?)\s*\d+[a-z]?(?:\s*(?:x|por|entre)\s*[^,;]+)?)/i);
+    if (conNumero) {
+      const trozo = conNumero[1].trim();
+      lugar = lugar && lugar.length > trozo.length ? lugar : trozo;
+    }
+    return lugar || null;
+  }
+
+  // Lee el mensaje completo de un cliente y devuelve la cita lista para la página.
+  // opciones.hoy: la fecha de hoy (para "sábado", "mañana"...).
+  function leerMensaje(texto, opciones = {}) {
+    const original = String(texto || '').trim();
+    const limpio = sinEnlaces(original);
+    const hoy = opciones.hoy || new Date();
+
+    const cita = Entender.entender(limpio, { hoy });
+
+    const nombre = sacarNombreCliente(limpio);
+    if (nombre) cita.cliente = nombre;
+
+    const servicio = sacarServicio(limpio);
+    if (servicio) cita.tipo = servicio;
+
+    const direccion = sacarDireccion(limpio);
+    if (direccion) {
+      cita.lugar = direccion;
+      cita.maps = Entender.enlaceMaps(cita);
+    } else if (!cita.lugar) {
+      // "..., Jardines de Chuburná": el lugar va después de la coma, sin "en".
+      const cola = limpio.match(/,\s*([A-ZÁÉÍÓÚÑa-záéíóúñ][^,;]{2,40})$/);
+      if (cola && !/\d{1,2}\s*(am|pm|de la)/i.test(cola[1])) {
+        cita.lugar = cola[1].trim();
+        cita.maps = Entender.enlaceMaps(cita);
+      }
+    }
+
+    const ubicacion = sacarUbicacion(original);
+    cita.ubicacion = ubicacion;
+    if (ubicacion) {
+      // Con coordenadas, el mapa es exacto (no depende de cómo se escribió la dirección).
+      cita.maps = `https://www.google.com/maps/search/?api=1&query=${ubicacion.lat},${ubicacion.lon}`;
+    }
+
+    // Las dudas de entender.js siguen valiendo, pero la ubicación cuenta como lugar.
+    cita.dudas = cita.dudas.filter((d) => !((ubicacion || cita.lugar) && /lugar/i.test(d)));
+    if (!cita.cliente) cita.dudas.push('No entendí el nombre del cliente.');
+    if (!cita.lugar && !ubicacion) {
+      cita.dudas = cita.dudas.filter((d) => !/lugar/i.test(d));
+      cita.dudas.push('No entendí la dirección ni vino la ubicación.');
+    }
+    cita.completa = cita.dudas.length === 0;
+
+    return cita;
+  }
+
+  // Lo que usa la página.
+  window.Mensaje = { leerMensaje, sacarUbicacion, sacarNombreCliente, sacarServicio, sacarDireccion, sinEnlaces };
+
+  const CLAVE = 'citas-tio-fer';
+  const entrada = document.getElementById('entrada');
+  const lista = document.getElementById('lista');
+  const vacio = document.getElementById('vacio');
+  const cajaHoy = document.getElementById('aviso-hoy');
+
+  const EJEMPLOS = [
+    'sábado 3pm, colonia Chuburná, doña Mari',
+    'mañana a las 4 de la tarde en el centro, familia Pérez',
+    'velorio el jueves a las 8 de la noche, fracc. Las Américas, Sra. López',
+    '3 de noviembre 19:30, calle 60 norte, para Juan',
+  ];
+
+  function cargar() {
+    try { return JSON.parse(localStorage.getItem(CLAVE) || '[]'); } catch { return []; }
+  }
+  function guardar(citas) {
+    localStorage.setItem(CLAVE, JSON.stringify(citas));
+  }
+
+  function hoyISO() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+
+  // El aviso del día: qué hay hoy y qué viene esta semana. Es lo primero que ve.
+  function pintarAviso(citas) {
+    const hoy = hoyISO();
+    const deHoy = Avisos.delDia(citas, hoy);
+    const luego = Avisos.proximas(citas, hoy, 7);
+    cajaHoy.innerHTML = '';
+
+    if (!deHoy.length && !luego.length) {
+      cajaHoy.innerHTML = '<div class="hoy libre"><div class="titulo">Hoy no tienes citas ni nada esta semana.</div></div>';
+      return;
+    }
+
+    const div = document.createElement('div');
+    div.className = 'hoy' + (deHoy.length ? '' : ' libre');
+
+    const titulo = deHoy.length
+      ? `Hoy tienes ${deHoy.length === 1 ? '1 cita' : deHoy.length + ' citas'}`
+      : 'Hoy no tienes citas';
+
+    const items = deHoy.map((c) => `
+      <li><span class="hora">${escapar(c.horaBonita || 'sin hora')}</span> · ${escapar(c.cliente || 'sin nombre')} · ${escapar(c.lugar || 'sin lugar')}
+        ${c.maps ? ` · <a href="${c.maps}" target="_blank" rel="noopener" style="color:var(--acento)">Maps</a>` : ''}
+      </li>`).join('');
+
+    const viene = luego.length
+      ? `<div class="viene">Lo que viene: ${luego.slice(0, 3).map((c) => `<b>${escapar(c.fechaBonita || '')}</b> ${escapar(c.cliente || '')}`).join(' · ')}${luego.length > 3 ? ` y ${luego.length - 3} más` : ''}</div>`
+      : '';
+
+    div.innerHTML = `<div class="titulo">${titulo}</div>${items ? `<ul>${items}</ul>` : ''}${viene}`;
+
+    // El mismo texto que se manda por WhatsApp, para copiarlo y pegarlo.
+    const texto = Avisos.textoAviso(citas, hoy, { dias: 7 });
+    if (texto) {
+      const fila = document.createElement('div');
+      fila.className = 'fila-aviso';
+
+      // Atajo: abre WhatsApp con el aviso ya escrito. Solo hay que darle enviar.
+      const wa = document.createElement('a');
+      wa.className = 'copiar wa';
+      wa.textContent = 'Mandar por WhatsApp';
+      wa.href = enlaceWhatsApp(texto);
+      wa.target = '_blank';
+      wa.rel = 'noopener';
+      fila.appendChild(wa);
+
+      const b = document.createElement('button');
+      b.className = 'copiar';
+      b.textContent = 'Copiar el aviso';
+      b.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(texto);
+          b.textContent = 'Copiado ✓';
+        } catch {
+          b.textContent = 'No se pudo copiar';
+        }
+        setTimeout(() => { b.textContent = 'Copiar el aviso'; }, 1800);
+      });
+      fila.appendChild(b);
+      div.appendChild(fila);
+    }
+
+    cajaHoy.appendChild(div);
+  }
+
+  // El día de hoy, ordenado por zona (sur primero) para no andar cruzando la ciudad.
+  function pintarRuta(citas) {
+    const hoy = hoyISO();
+    const deHoy = citas.filter((c) => c.fecha === hoy);
+    if (deHoy.length < 2) return;
+    const enOrden = Zonas.ordenarPorZona(deHoy);
+    const aviso = Zonas.avisoDeZonas(deHoy);
+    const div = document.createElement('div');
+    div.className = 'ruta';
+    div.innerHTML = `
+      <div class="titulo">Tu ruta de hoy, en orden</div>
+      <ol>${enOrden.map((c) => `
+        <li><span class="zona">${escapar(c.zona || Zonas.zonaDe(c.lugar))}</span>
+          <span class="hora">${escapar(c.horaBonita || 'sin hora')}</span> ·
+          ${escapar(c.cliente || 'sin nombre')} · ${escapar(c.lugar || 'sin lugar')}</li>`).join('')}
+      </ol>
+      ${aviso ? `<div class="cruza">${escapar(aviso)}</div>` : ''}`;
+    cajaHoy.appendChild(div);
+  }
+
+  function pintar() {
+    const citas = Entender.ordenar(cargar());
+    pintarAviso(citas);
+    pintarRuta(citas);
+    lista.innerHTML = '';
+    vacio.style.display = citas.length ? 'none' : 'block';
+
+    citas.forEach((c, i) => {
+      const div = document.createElement('div');
+      div.className = 'tarjeta' + (c.completa ? '' : ' dudosa') + (i === editando ? ' editando' : '');
+
+      const cuando = c.fechaBonita
+        ? `${c.fechaBonita}${c.horaBonita ? ` · <span class="hora">${c.horaBonita}</span>` : ''}`
+        : (c.horaBonita ? `<span class="hora">${c.horaBonita}</span>` : 'Sin fecha ni hora');
+
+      div.innerHTML = `
+        <div class="cuando">${cuando}</div>
+        <div class="quien">${c.cliente ? escapar(c.cliente) : '<span style="color:var(--suave)">Sin nombre</span>'}</div>
+        <div class="donde">${c.lugar ? escapar(c.lugar) : 'Sin lugar'} · <span class="etiqueta">${escapar(c.tipo)}</span>${c.precio ? `<span class="etiqueta">$${c.precio}</span>` : ''}</div>
+        ${Mover.textoAnticipo(c) ? `<div class="anticipo">${escapar(Mover.textoAnticipo(c))}</div>` : ''}
+        ${c.movidaDe ? `<div class="movida">Movida del ${escapar(fechaBonita(c.movidaDe))}</div>` : ''}
+        ${c.dudas.length ? `<ul class="dudas">${c.dudas.map((d) => `<li>${escapar(d)}</li>`).join('')}</ul>` : ''}
+        ${i === editando ? '<div class="editando-aviso">La estás editando abajo, en los campos.</div>' : ''}
+        <div class="acciones">
+          ${c.maps ? `<a class="maps" href="${c.maps}" target="_blank" rel="noopener">Abrir en Maps</a>` : ''}
+          <button class="mover" data-i="${i}">Mover fecha</button>
+          <button class="editar" data-i="${i}">${i === editando ? 'Editando…' : 'Editar'}</button>
+          <button class="borrar" data-i="${i}">Borrar</button>
+        </div>
+      `;
+      lista.appendChild(div);
+    });
+
+    lista.querySelectorAll('button.borrar').forEach((b) => {
+      b.addEventListener('click', () => {
+        const citas = Entender.ordenar(cargar());
+        const quitada = citas.splice(Number(b.dataset.i), 1)[0];
+        guardar(citas);
+        // Si estaba editando justo esa, se deja de editar.
+        if (editando !== null) {
+          if (Number(b.dataset.i) === editando) cancelarEdicion();
+          else if (Number(b.dataset.i) < editando) editando--;
+        }
+        pintar();
+        if (quitada) avisar(`Borrada la cita de ${quitada.cliente || 'sin nombre'}.`);
+      });
+    });
+
+    lista.querySelectorAll('button.editar').forEach((b) => {
+      b.addEventListener('click', () => empezarEdicion(Number(b.dataset.i)));
+    });
+
+    lista.querySelectorAll('button.mover').forEach((b) => {
+      b.addEventListener('click', () => abrirMover(Number(b.dataset.i)));
+    });
+  }
+
+  // Un aviso corto arriba del formulario (se va solo a los 4 segundos).
+  let temporizadorAviso = null;
+  function avisar(texto) {
+    const p = document.getElementById('aviso-editar');
+    p.textContent = texto;
+    p.style.display = 'block';
+    clearTimeout(temporizadorAviso);
+    temporizadorAviso = setTimeout(() => { if (editando === null) p.style.display = 'none'; }, 4000);
+  }
+
+  // Enlace de WhatsApp con el texto ya escrito. Sin número: WhatsApp pregunta a quién.
+  // Con número (si algún día se guarda el del tío): wa.me/52<numero>?text=...
+  function enlaceWhatsApp(texto, telefono) {
+    const limpio = String(telefono || '').replace(/\D/g, '');
+    const base = limpio ? `https://wa.me/${limpio}` : 'https://wa.me/';
+    return `${base}?text=${encodeURIComponent(texto)}`;
+  }
+
+  function escapar(s) {
+    return String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
+
+  function agregar() {
+    const texto = entrada.value.trim();
+    if (!texto) { entrada.focus(); return; }
+    const cita = entender(texto);
+    const citas = cargar();
+    citas.push(cita);
+    guardar(citas);
+    entrada.value = '';
+    pintar();
+  }
+
+  // --- Pegar el mensaje que mandó el cliente por WhatsApp ---
+  // Saca nombre, servicio, dirección y ubicación y lo deja escrito en la caja,
+  // para que el tío solo revise y le dé a "Agregar cita".
+  const pegarAviso = document.getElementById('pegar-aviso');
+
+  function avisarPegado(texto, esError) {
+    pegarAviso.textContent = texto;
+    pegarAviso.style.display = texto ? 'block' : 'none';
+    pegarAviso.style.color = esError ? 'var(--error)' : 'var(--suave)';
+  }
+
+  async function pegarMensajeCliente() {
+    let texto = '';
+    try {
+      texto = await navigator.clipboard.readText();
+    } catch (e) {
+      avisarPegado('No pude leer el portapapeles. Mantén pulsada la caja de arriba y elige Pegar.', true);
+      entrada.focus();
+      return;
+    }
+    if (!texto || !texto.trim()) {
+      avisarPegado('El portapapeles está vacío. Copia primero el mensaje del cliente.', true);
+      entrada.focus();
+      return;
+    }
+    usarMensajeCliente(texto);
+  }
+
+  // Pone en la caja lo que se entendió del mensaje del cliente.
+  function usarMensajeCliente(texto) {
+    const cita = Mensaje.leerMensaje(texto);
+    const partes = [];
+    if (cita.cliente) partes.push(cita.cliente);
+    if (cita.tipo) partes.push(cita.tipo);
+    if (cita.fechaBonita) partes.push(cita.fechaBonita);
+    if (cita.horaBonita) partes.push(cita.horaBonita);
+    if (cita.lugar) partes.push(cita.lugar);
+
+    entrada.value = partes.length ? partes.join(', ') : texto.trim();
+    entrada.focus();
+
+    if (cita.ubicacion) {
+      avisarPegado(`Ubicación recibida (${cita.ubicacion.lat.toFixed(4)}, ${cita.ubicacion.lon.toFixed(4)}). Revisa y dale a Agregar cita.`, false);
+    } else if (cita.dudas.length) {
+      avisarPegado('Falta: ' + cita.dudas.join(' '), true);
+    } else {
+      avisarPegado('Listo. Revisa y dale a Agregar cita.', false);
+    }
+  }
+
+  document.getElementById('pegar-cliente').addEventListener('click', pegarMensajeCliente);
+
+  // Si la página se abrió compartiendo un mensaje desde WhatsApp (?texto=... o ?text=...),
+  // se usa ese mensaje sin que el tío tenga que pegar nada.
+  (function recibirCompartido() {
+    const params = new URLSearchParams(location.search);
+    const compartido = params.get('texto') || params.get('text') || params.get('body');
+    if (compartido && compartido.trim()) {
+      usarMensajeCliente(compartido);
+      // Que al recargar no vuelva a salir el mismo mensaje.
+      history.replaceState(null, '', location.pathname);
+    }
+  })();
+
+  document.getElementById('agregar').addEventListener('click', agregar);
+  entrada.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) agregar();
+  });
+
+  // --- Formulario: los mismos datos, campo por campo ---
+  const campos = {
+    fecha: document.getElementById('f-fecha'),
+    hora: document.getElementById('f-hora'),
+    lugar: document.getElementById('f-lugar'),
+    cliente: document.getElementById('f-cliente'),
+    tipo: document.getElementById('f-tipo'),
+    telefono: document.getElementById('f-telefono'),
+    precio: document.getElementById('f-precio'),
+    anticipo: document.getElementById('f-anticipo'),
+  };
+
+  // Arma la cita con lo que hay en los campos. Devuelve null si no hay nada escrito.
+  function citaDesdeFormulario() {
+    const fecha = campos.fecha.value;
+    const hora = campos.hora.value;
+    const lugar = campos.lugar.value.trim();
+    const cliente = campos.cliente.value.trim();
+
+    if (!fecha && !hora && !lugar && !cliente) return null;
+
+    const dudas = [];
+    if (!fecha) dudas.push('Falta la fecha.');
+    if (!hora) dudas.push('Falta la hora.');
+    if (!lugar) dudas.push('Falta el lugar.');
+
+    const [h, m] = hora ? hora.split(':').map(Number) : [null, 0];
+    const precio = campos.precio.value ? Number(campos.precio.value) : null;
+    const anticipo = campos.anticipo && campos.anticipo.value ? Number(campos.anticipo.value) : 0;
+
+    const cita = {
+      textoOriginal: [fecha, hora, lugar, cliente].filter(Boolean).join(', '),
+      fecha: fecha || null,
+      fechaBonita: fecha ? fechaBonita(fecha) : null,
+      hora: hora ? h : null,
+      minuto: hora ? m : 0,
+      horaBonita: hora ? horaBonita(h, m) : null,
+      lugar: lugar || null,
+      tipoLugar: null,
+      cliente: cliente || null,
+      telefono: campos.telefono.value.trim() || null,
+      tipo: campos.tipo.value || 'rezo',
+      precio,
+      anticipo,
+      dudas,
+      completa: dudas.length === 0,
+    };
+    cita.maps = cita.lugar ? Entender.enlaceMaps(cita) : null;
+    cita.orden = `${cita.fecha || '9999-99-99'} ${String(cita.hora ?? 99).padStart(2, '0')}:${String(cita.minuto).padStart(2, '0')}`;
+    return cita;
+  }
+
+  function agregarDesdeFormulario() {
+    const cita = citaDesdeFormulario();
+    if (!cita) {
+      campos.fecha.focus();
+      return;
+    }
+
+    const citas = cargar();
+    citas.push(cita);
+    guardar(citas);
+
+    Object.values(campos).forEach((c) => { if (c.tagName !== 'SELECT') c.value = ''; });
+    campos.tipo.value = 'rezo';
+    pintar();
+  }
+
+
+  // --- Mover una cita y avisar a los demás ---
+  let moviendo = null;
+  const panelMover = document.getElementById('panel-mover');
+  const moverTitulo = document.getElementById('mover-titulo');
+  const moverExplica = document.getElementById('mover-explica');
+  const moverFecha = document.getElementById('mover-fecha');
+  const moverResultado = document.getElementById('mover-resultado');
+
+  function abrirMover(i) {
+    const citas = Entender.ordenar(cargar());
+    const c = citas[i];
+    if (!c) return;
+    moviendo = i;
+    moverTitulo.textContent = `Mover la cita de ${c.cliente || 'sin nombre'}`;
+    moverExplica.textContent = `Hoy está el ${c.fechaBonita || 'día sin fecha'}${c.horaBonita ? ' a las ' + c.horaBonita : ''}. Elige la fecha nueva.`;
+    moverFecha.value = c.fecha || '';
+    moverResultado.innerHTML = '';
+    panelMover.style.display = 'block';
+    panelMover.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function cerrarMover() {
+    moviendo = null;
+    panelMover.style.display = 'none';
+    moverResultado.innerHTML = '';
+  }
+
+  document.getElementById('mover-cerrar').addEventListener('click', cerrarMover);
+
+  document.getElementById('mover-hacer').addEventListener('click', () => {
+    if (moviendo === null) return;
+    const citas = Entender.ordenar(cargar());
+    const r = Mover.moverCita(citas, moviendo, moverFecha.value);
+    if (!r.ok) {
+      moverResultado.innerHTML = `<p class="error-mover">${escapar(r.error)}</p>`;
+      return;
+    }
+    guardar(r.citas);
+    pintar();
+
+    const partes = [];
+    partes.push(`<p class="ok-mover">Movida al ${escapar(r.movida.fechaBonita)}. Avisa a ${r.avisos.length} ${r.avisos.length === 1 ? 'persona' : 'personas'}:</p>`);
+    if (r.empalme) {
+      partes.push(`<p class="error-mover">Ojo: ese día ya tiene el rezo de ${escapar(r.empalme.cliente || 'sin nombre')} a la misma hora.</p>`);
+    }
+    r.avisos.forEach((a, n) => {
+      const quien = a.cita.cliente || 'sin nombre';
+      const motivo = a.motivo === 'confirmar' ? 'Confirmarle la fecha nueva'
+        : a.motivo === 'dia-viejo' ? 'Tiene cita el día viejo'
+        : 'Tiene cita el día nuevo';
+      partes.push(`
+        <div class="aviso-mover">
+          <div class="aviso-quien">${escapar(quien)} <span class="etiqueta">${escapar(motivo)}</span></div>
+          <textarea class="aviso-texto" id="aviso-texto-${n}" rows="3">${escapar(a.texto)}</textarea>
+          <button class="copiar-aviso" data-n="${n}">Copiar el mensaje</button>
+        </div>
+      `);
+    });
+    moverResultado.innerHTML = partes.join('');
+
+    moverResultado.querySelectorAll('button.copiar-aviso').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const t = document.getElementById(`aviso-texto-${b.dataset.n}`);
+        try {
+          await navigator.clipboard.writeText(t.value);
+          b.textContent = 'Copiado';
+          setTimeout(() => { b.textContent = 'Copiar el mensaje'; }, 2000);
+        } catch {
+          t.select();
+          b.textContent = 'Selecciónalo y copia';
+        }
+      });
+    });
+  });
+
+  // --- Editar una cita que ya está guardada ---
+  // editando = la posición (en la lista ordenada) de la cita que se está cambiando, o null.
+  let editando = null;
+  const cajaFormulario = document.getElementById('caja-formulario');
+  const resumenFormulario = document.getElementById('resumen-formulario');
+  const botonGuardar = document.getElementById('agregar-formulario');
+  const botonCancelar = document.getElementById('cancelar-edicion');
+  const avisoEditar = document.getElementById('aviso-editar');
+
+  function empezarEdicion(i) {
+    const citas = Entender.ordenar(cargar());
+    const c = citas[i];
+    if (!c) return;
+    editando = i;
+
+    campos.fecha.value = c.fecha || '';
+    campos.hora.value = c.hora !== null && c.hora !== undefined
+      ? `${String(c.hora).padStart(2, '0')}:${String(c.minuto || 0).padStart(2, '0')}`
+      : '';
+    campos.lugar.value = c.lugar || '';
+    campos.cliente.value = c.cliente || '';
+    campos.tipo.value = c.tipo || 'rezo';
+    campos.telefono.value = c.telefono || '';
+    campos.precio.value = c.precio !== null && c.precio !== undefined ? c.precio : '';
+    if (campos.anticipo) campos.anticipo.value = c.anticipo ? c.anticipo : '';
+
+    cajaFormulario.open = true;
+    resumenFormulario.textContent = 'Editando la cita';
+    botonGuardar.textContent = 'Guardar cambios';
+    botonCancelar.style.display = '';
+    avisoEditar.textContent = `Editando la cita de ${c.cliente || 'sin nombre'} del ${c.fechaBonita || 'día sin fecha'}.`;
+    avisoEditar.style.display = 'block';
+    clearTimeout(temporizadorAviso);
+
+    pintar();
+    cajaFormulario.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    campos.fecha.focus({ preventScroll: true });
+  }
+
+  function cancelarEdicion() {
+    editando = null;
+    Object.values(campos).forEach((c) => { if (c.tagName !== 'SELECT') c.value = ''; });
+    campos.tipo.value = 'rezo';
+    resumenFormulario.textContent = 'O llenar los campos uno por uno';
+    botonGuardar.textContent = 'Guardar cita';
+    botonCancelar.style.display = 'none';
+    avisoEditar.style.display = 'none';
+    avisoEditar.textContent = '';
+    clearTimeout(temporizadorAviso);
+  }
+
+  function guardarEdicion() {
+    const nueva = citaDesdeFormulario();
+    if (!nueva) {
+      avisar('No hay nada escrito: escribe al menos la fecha, la hora o el lugar.');
+      campos.fecha.focus();
+      return;
+    }
+    const citas = Entender.ordenar(cargar());
+    if (!citas[editando]) { cancelarEdicion(); pintar(); return; }
+    citas[editando] = nueva;
+    guardar(citas);
+    const nombre = nueva.cliente || 'sin nombre';
+    cancelarEdicion();
+    pintar();
+    avisar(`Guardada la cita de ${nombre}.`);
+  }
+
+  botonGuardar.addEventListener('click', () => {
+    if (editando !== null) guardarEdicion();
+    else agregarDesdeFormulario();
+  });
+  botonCancelar.addEventListener('click', () => { cancelarEdicion(); pintar(); });
+
+  const cajaEjemplos = document.getElementById('ejemplos');
+  EJEMPLOS.forEach((ej) => {
+    const b = document.createElement('button');
+    b.textContent = ej.length > 34 ? ej.slice(0, 32) + '…' : ej;
+    b.title = ej;
+    b.addEventListener('click', () => { entrada.value = ej; entrada.focus(); });
+    cajaEjemplos.appendChild(b);
+  });
+
+  pintar();
+
+  // Para probar sin WhatsApp: en la consola, Mensaje.leerMensaje("...")
+  window.usarMensajeCliente = usarMensajeCliente;
+</script>
+</body>
+</html>

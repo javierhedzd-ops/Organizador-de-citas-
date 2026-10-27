@@ -1,0 +1,20 @@
+{
+  "name": "Citas del tío de Fer",
+  "short_name": "Citas Fer",
+  "description": "Las citas del tío de Fer, ordenadas, con el aviso del día para WhatsApp.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "lang": "es",
+  "icons": [
+    { "src": "icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": { "title": "titulo", "text": "texto", "url": "enlace" }
+  }
+}
