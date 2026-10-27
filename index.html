@@ -117,6 +117,21 @@
   .tarjeta .editando-aviso { color: var(--acento); font-size: 0.8rem; font-weight: 600; margin-top: 8px; }
   .fila button.cancelar { flex: 0 0 auto; color: var(--suave); }
   .vacio { color: var(--suave); font-size: 0.9rem; margin-top: 22px; text-align: center; }
+  .tarjeta.hecha { border-left-color: var(--suave); opacity: 0.8; }
+  .tarjeta.hecha .cuando { text-decoration: line-through; }
+  .acciones button.hecha { color: var(--suave); }
+  .acciones button.hecha.marcada { background: var(--suave); color: var(--fondo); border-color: transparent; }
+  .acciones button.calendario { color: var(--acento); }
+  .alerta-cruce {
+    display: none; background: var(--duda); color: #1a1200; font-weight: 600;
+    border-radius: 12px; padding: 10px 14px; margin-top: 10px; font-size: 0.9rem;
+  }
+  .respaldo { margin-top: 26px; padding: 14px; border: 1px dashed var(--borde); border-radius: 14px; }
+  .respaldo h2 { margin: 0 0 4px; font-size: 1rem; }
+  .respaldo p { color: var(--suave); font-size: 0.85rem; margin: 0 0 8px; }
+  .respaldo .fila button { flex: 1; font-size: 0.9rem; }
+  .historial { margin-top: 18px; }
+  .historial summary { font-weight: 600; color: var(--suave); }
   #mensaje-cliente {
     white-space: pre-wrap;
     background: var(--panel2);
@@ -218,6 +233,7 @@
 <body>
   <h1>Citas del tío de Fer</h1>
   <p class="sub">Escribe la cita como se la mandarías por WhatsApp. El sistema la ordena y te da el botón de Maps.</p>
+  <p class="sub" id="version-pagina" style="font-size:12px; opacity:.7; margin-top:-6px;">versión 4</p>
   <button class="instalar" id="instalar" style="display:none">Instalar en el teléfono</button>
 
   <label for="entrada">La cita</label>
@@ -226,6 +242,7 @@
     <button class="principal" id="agregar">Agregar cita</button>
   </div>
   <div class="ejemplos" id="ejemplos"></div>
+  <div class="alerta-cruce" id="aviso-cruce"></div>
 
   <details id="caja-formulario">
     <summary id="resumen-formulario">O llenar los campos uno por uno</summary>
@@ -284,7 +301,21 @@
   <p class="vacio" id="vacio">Todavía no hay citas. Escribe una arriba.</p>
   <div id="mensaje-cliente" style="display:none"></div>
 
-  <p class="aviso" style="text-align:center;font-size:0.75rem;opacity:0.6">versión 3</p>
+  <details class="historial" id="caja-historial">
+    <summary id="resumen-historial">Historial (citas que ya pasaron)</summary>
+    <div id="lista-pasadas"></div>
+  </details>
+
+  <div class="respaldo">
+    <h2>Respaldo</h2>
+    <p>Las citas viven en este teléfono. Saca un archivo por si cambias de teléfono o se borran.</p>
+    <div class="fila">
+      <button id="exportar">Descargar respaldo</button>
+      <button id="importar">Cargar respaldo</button>
+    </div>
+    <input type="file" id="archivo-respaldo" accept=".json,application/json" style="display:none">
+  </div>
+
   <p class="aviso">Prototipo: entiende la cita sin internet y sin IA. Si no entiende la fecha, la hora o el lugar, te lo dice en amarillo en vez de inventarlo.</p>
 
 <script src="entender.js"></script>
@@ -298,6 +329,9 @@
   const lista = document.getElementById('lista');
   const vacio = document.getElementById('vacio');
   const cajaHoy = document.getElementById('aviso-hoy');
+  const listaPasadas = document.getElementById('lista-pasadas');
+  const resumenHistorial = document.getElementById('resumen-historial');
+  const cajaCruce = document.getElementById('aviso-cruce');
 
   const EJEMPLOS = [
     'sábado 3pm, colonia Chuburná, doña Mari',
@@ -433,16 +467,20 @@
   let citasPintadas = [];
 
   function pintar() {
-    const citas = ordenar(cargar());
+    const todas = ordenar(cargar());
+    const hoy = hoyISO();
+    // Las que ya pasaron van al historial; las de hoy y las que vienen, arriba.
+    const citas = todas.filter((c) => !c.fecha || c.fecha >= hoy);
+    const pasadas = todas.filter((c) => c.fecha && c.fecha < hoy).reverse();
     citasPintadas = citas;
-    pintarAviso(citas);
-    pintarRuta(citas);
+    pintarAviso(todas);
+    pintarRuta(todas);
     lista.innerHTML = '';
     vacio.style.display = citas.length ? 'none' : 'block';
 
     citas.forEach((c, i) => {
       const div = document.createElement('div');
-      div.className = 'tarjeta' + (c.completa ? '' : ' dudosa') + (i === editando ? ' editando' : '') + (c.anticipo ? ' pagada' : '') + (c.cancelada ? ' cancelada' : '');
+      div.className = 'tarjeta' + (c.completa ? '' : ' dudosa') + (i === editando ? ' editando' : '') + (c.anticipo ? ' pagada' : '') + (c.cancelada ? ' cancelada' : '') + (c.hecha ? ' hecha' : '');
 
       const cuando = c.fechaBonita
         ? `${c.fechaBonita}${c.horaBonita ? ` · <span class="hora">${c.horaBonita}</span>` : ''}`
@@ -451,7 +489,7 @@
       div.innerHTML = `
         <div class="cuando">${cuando}</div>
         <div class="quien">${c.cliente ? escapar(c.cliente) : '<span style="color:var(--suave)">Sin nombre</span>'}</div>
-        <div class="donde">${c.lugar ? escapar(c.lugar) : 'Sin lugar'} · <span class="etiqueta">${escapar(c.tipo)}</span>${c.precio ? `<span class="etiqueta">$${c.precio}</span>` : ''}${c.anticipo ? '<span class="etiqueta">Anticipo pagado</span>' : ''}${c.cancelada ? '<span class="etiqueta">Cancelada</span>' : ''}</div>
+        <div class="donde">${c.lugar ? escapar(c.lugar) : 'Sin lugar'} · <span class="etiqueta">${escapar(c.tipo)}</span>${c.precio ? `<span class="etiqueta">$${c.precio}</span>` : ''}${c.anticipo ? `<span class="etiqueta">Anticipo${c.anticipoMonto ? ' $' + c.anticipoMonto : ''}</span>` : ''}${c.cancelada ? '<span class="etiqueta">Cancelada</span>' : ''}${c.hecha ? '<span class="etiqueta">Hecha</span>' : ''}</div>
         ${c.dudas.length ? `<ul class="dudas">${c.dudas.map((d) => `<li>${escapar(d)}</li>`).join('')}</ul>` : ''}
         ${i === editando ? '<div class="editando-aviso">La estás editando abajo, en los campos.</div>' : ''}
         <div class="acciones">
@@ -461,6 +499,8 @@
           <button class="mover" data-i="${i}">Mover</button>
           <button class="cancelar-cita" data-i="${i}">Cancelar</button>
           <button class="anticipo${c.anticipo ? ' pagado' : ''}" data-i="${i}">${c.anticipo ? 'Anticipo ✓' : 'Anticipo'}</button>
+          ${c.fecha && c.hora !== null && c.hora !== undefined ? `<button class="calendario" data-i="${i}">Al calendario</button>` : ''}
+          <button class="hecha${c.hecha ? ' marcada' : ''}" data-i="${i}">${c.hecha ? 'Hecha ✓' : 'Marcar hecha'}</button>
           <button class="borrar" data-i="${i}">Borrar</button>
         </div>
       `;
@@ -503,6 +543,49 @@
     lista.querySelectorAll('button.cancelar-cita').forEach((b) => {
       b.addEventListener('click', () => cancelarCita(Number(b.dataset.i)));
     });
+
+    // Hecha: la cita ya se hizo. No se borra: queda en el historial.
+    lista.querySelectorAll('button.hecha').forEach((b) => {
+      b.addEventListener('click', () => {
+        const c = citasPintadas[Number(b.dataset.i)];
+        if (!c) return;
+        const citas = cargar();
+        const original = citas.find((x) => x.orden === c.orden && x.textoOriginal === c.textoOriginal) || c;
+        original.hecha = !original.hecha;
+        guardar(citas);
+        pintar();
+        avisar(original.hecha
+          ? `Cita de ${original.cliente || 'sin nombre'} marcada como hecha.`
+          : `Cita de ${original.cliente || 'sin nombre'} vuelve a estar pendiente.`);
+      });
+    });
+
+    // Calendario: baja un archivo .ics que el teléfono abre en su calendario.
+    lista.querySelectorAll('button.calendario').forEach((b) => {
+      b.addEventListener('click', () => {
+        const c = citasPintadas[Number(b.dataset.i)];
+        if (c) descargarICS(c);
+      });
+    });
+
+    // Historial: las citas que ya pasaron, de la más nueva a la más vieja.
+    listaPasadas.innerHTML = '';
+    pasadas.forEach((c) => {
+      const div = document.createElement('div');
+      div.className = 'tarjeta' + (c.cancelada ? ' cancelada' : '') + (c.hecha ? ' hecha' : '');
+      const cuando = c.fechaBonita
+        ? `${c.fechaBonita}${c.horaBonita ? ` · <span class="hora">${c.horaBonita}</span>` : ''}`
+        : 'Sin fecha';
+      div.innerHTML = `
+        <div class="cuando">${cuando}</div>
+        <div class="quien">${c.cliente ? escapar(c.cliente) : '<span style="color:var(--suave)">Sin nombre</span>'}</div>
+        <div class="donde">${c.lugar ? escapar(c.lugar) : 'Sin lugar'} · <span class="etiqueta">${escapar(c.tipo)}</span>${c.precio ? `<span class="etiqueta">$${c.precio}</span>` : ''}${c.anticipo ? '<span class="etiqueta">Anticipo</span>' : ''}${c.cancelada ? '<span class="etiqueta">Cancelada</span>' : ''}${c.hecha ? '<span class="etiqueta">Hecha</span>' : ''}</div>
+      `;
+      listaPasadas.appendChild(div);
+    });
+    resumenHistorial.textContent = pasadas.length
+      ? `Historial (${pasadas.length} ${pasadas.length === 1 ? 'cita que ya pasó' : 'citas que ya pasaron'})`
+      : 'Historial (todavía no hay citas pasadas)';
 
     // Anticipo: marca o desmarca que ya pagó.
     lista.querySelectorAll('button.anticipo').forEach((b) => {
@@ -552,6 +635,13 @@
   }
 
   // ¿La fecha existe de verdad? (2026-13-45 no, aunque tenga el formato correcto)
+  // Suma días a una fecha ISO (2026-11-03) sin líos de zona horaria.
+  function sumarDias(iso, dias) {
+    const [a, m, d] = iso.split('-').map(Number);
+    const f = new Date(a, m - 1, d + dias);
+    return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+  }
+
   function fechaExiste(iso) {
     const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!m) return false;
@@ -586,6 +676,7 @@
 
     const citas = cargar();
     const original = citas.find((x) => x.orden === c.orden && x.textoOriginal === c.textoOriginal) || c;
+    if (!avisarCruce(citaQueChoca(fecha, Number(m[1]), Number(m[2]), original), '¿Moverla de todos modos?')) return;
     original.fecha = fecha;
     original.fechaBonita = fechaBonita(fecha);
     original.hora = Number(m[1]);
@@ -636,6 +727,137 @@
     temporizadorAviso = setTimeout(() => { if (editando === null) p.style.display = 'none'; }, 4000);
   }
 
+  // --- Respaldo: botones ---
+  document.getElementById('exportar').addEventListener('click', exportarRespaldo);
+  document.getElementById('importar').addEventListener('click', () => document.getElementById('archivo-respaldo').click());
+  document.getElementById('archivo-respaldo').addEventListener('change', (e) => {
+    importarRespaldo(e.target.files && e.target.files[0]);
+    e.target.value = ''; // para poder cargar el mismo archivo otra vez
+  });
+
+  // --- Choque de horario ---
+  // Un rezo dura más o menos una hora y hay que trasladarse: si dos citas del
+  // mismo día quedan a menos de 90 minutos, se avisa antes de guardar.
+  const MINUTOS_ENTRE_CITAS = 90;
+
+  function citaQueChoca(fecha, hora, minuto, ignorar) {
+    if (!fecha || hora === null || hora === undefined) return null;
+    const nuevo = hora * 60 + (minuto || 0);
+    for (const c of cargar()) {
+      if (c === ignorar || c.cancelada || c.fecha !== fecha) continue;
+      if (c.hora === null || c.hora === undefined) continue;
+      const suyo = c.hora * 60 + (c.minuto || 0);
+      if (Math.abs(nuevo - suyo) < MINUTOS_ENTRE_CITAS) return c;
+    }
+    return null;
+  }
+
+  function avisarCruce(c, texto) {
+    if (!c) { cajaCruce.style.display = 'none'; return true; }
+    // Si el navegador no deja preguntar, no se frena: solo se avisa en pantalla.
+    if (typeof confirm !== 'function') { avisarCruceSolo(c); return true; }
+    const quien = c.cliente || 'otro cliente';
+    const cuando = [c.horaBonita, c.lugar].filter(Boolean).join(' en ');
+    avisarCruceSolo(c);
+    return confirm(`${texto}\n\nYa tiene a ${quien}${cuando ? ' a las ' + cuando : ''}.\n¿Guardarla de todos modos?`);
+  }
+
+  function avisarCruceSolo(c) {
+    const quien = c.cliente || 'otro cliente';
+    const cuando = [c.horaBonita, c.lugar].filter(Boolean).join(' en ');
+    cajaCruce.textContent = `Ojo: ese día ya tiene a ${quien}${cuando ? ' a las ' + cuando : ''}. Quedan menos de 90 minutos entre las dos.`;
+    cajaCruce.style.display = 'block';
+  }
+
+  // --- Mandar la cita al calendario del teléfono (.ics) ---
+  // Sin internet y sin cuenta: se baja un archivo y el teléfono lo abre.
+  function descargarICS(c) {
+    if (!c.fecha || c.hora === null || c.hora === undefined) {
+      avisar('Para el calendario hace falta la fecha y la hora.');
+      return;
+    }
+    const f = c.fecha.replace(/-/g, '');
+    const dos = (n) => String(n).padStart(2, '0');
+    const inicio = `${f}T${dos(c.hora)}${dos(c.minuto || 0)}00`;
+    // Una cita dura una hora; si acaba después de medianoche, se pasa al día siguiente.
+    const total = c.hora * 60 + (c.minuto || 0) + 60;
+    const dia = total >= 1440 ? sumarDias(c.fecha, 1).replace(/-/g, '') : f;
+    const fin = `${dia}T${dos(Math.floor(total / 60) % 24)}${dos(total % 60)}00`;
+    const limpiar = (t) => String(t || '').replace(/[\\;,]/g, ' ').replace(/\n/g, ' ');
+    const lineas = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Citas del tio de Fer//ES',
+      'BEGIN:VEVENT',
+      `UID:${Date.now()}@citas-tio-fer`,
+      `DTSTAMP:${inicio}`,
+      `DTSTART;TZID=America/Merida:${inicio}`,
+      `DTEND;TZID=America/Merida:${fin}`,
+      `SUMMARY:${limpiar(c.tipo || 'Cita')} - ${limpiar(c.cliente || 'cliente')}`,
+      c.lugar ? `LOCATION:${limpiar(c.lugar)}, Merida, Yucatan` : '',
+      c.precio ? `DESCRIPTION:Precio $${c.precio}${c.anticipo ? ' - anticipo $' + c.anticipo : ''}` : '',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].filter(Boolean);
+    const blob = new Blob([lineas.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `cita-${(c.cliente || 'tio-fer').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${c.fecha}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    avisar('Archivo del calendario descargado. Ábrelo y el teléfono lo agrega.');
+  }
+
+  // --- Respaldo: sacar y cargar las citas en un archivo ---
+  function exportarRespaldo() {
+    const citas = cargar();
+    if (!citas.length) { avisar('No hay citas que respaldar todavía.'); return; }
+    const datos = { app: 'citas-tio-fer', version: 1, fecha: new Date().toISOString(), citas };
+    const blob = new Blob([JSON.stringify(datos, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `respaldo-citas-${hoyISO()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    avisar(`Respaldo descargado con ${citas.length} ${citas.length === 1 ? 'cita' : 'citas'}.`);
+  }
+
+  function importarRespaldo(archivo) {
+    if (!archivo) return;
+    const lector = new FileReader();
+    lector.onload = () => {
+      let datos;
+      try {
+        datos = JSON.parse(lector.result);
+      } catch {
+        avisar('Ese archivo no se puede leer: no es un respaldo de citas.');
+        return;
+      }
+      // Acepta el formato nuevo ({citas: [...]}) y una lista suelta.
+      const nuevas = Array.isArray(datos) ? datos : (datos && Array.isArray(datos.citas) ? datos.citas : null);
+      if (!nuevas) { avisar('Ese archivo no tiene citas.'); return; }
+      const buenas = nuevas.filter((c) => c && typeof c === 'object' && 'fecha' in c);
+      if (!buenas.length) { avisar('El respaldo no trae ninguna cita válida.'); return; }
+
+      // No se pisa nada: se juntan con las que ya hay, sin repetir.
+      const actuales = cargar();
+      const firma = (c) => `${c.fecha}|${c.hora}|${c.minuto}|${c.cliente}|${c.lugar}`;
+      const yaEstan = new Set(actuales.map(firma));
+      const agregadas = buenas.filter((c) => !yaEstan.has(firma(c)));
+      if (!agregadas.length) { avisar('Esas citas ya están todas en el teléfono. No se cambió nada.'); return; }
+      if (!confirm(`El respaldo trae ${buenas.length} ${buenas.length === 1 ? 'cita' : 'citas'} y ${agregadas.length} no están en el teléfono.\n¿Agregarlas? (las que ya tiene no se tocan)`)) return;
+      guardar(actuales.concat(agregadas));
+      pintar();
+      avisar(`Se agregaron ${agregadas.length} ${agregadas.length === 1 ? 'cita' : 'citas'} del respaldo.`);
+    };
+    lector.onerror = () => avisar('No se pudo leer el archivo.');
+    lector.readAsText(archivo);
+  }
+
   function escapar(s) {
     return String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   }
@@ -649,6 +871,7 @@
     }
     try {
       const cita = entender(texto);
+      if (!avisarCruce(citaQueChoca(cita.fecha, cita.hora, cita.minuto), '¿Agregar la cita de todos modos?')) return;
       const citas = cargar();
       citas.push(cita);
       guardar(citas);
@@ -730,6 +953,8 @@
       return;
     }
 
+    if (!avisarCruce(citaQueChoca(cita.fecha, cita.hora, cita.minuto), '¿Agregar la cita de todos modos?')) return;
+
     const citas = cargar();
     citas.push(cita);
     guardar(citas);
@@ -800,6 +1025,7 @@
       campos.fecha.focus();
       return;
     }
+    if (!avisarCruce(citaQueChoca(nueva.fecha, nueva.hora, nueva.minuto, vieja), '¿Guardar los cambios de todos modos?')) return;
     // Lo que no se tocó en el formulario se conserva (anticipo, cancelada, teléfono...).
     citas[editando] = { ...vieja, ...nueva };
     guardar(citas);

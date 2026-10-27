@@ -1,7 +1,7 @@
 // Service worker: guarda la app en el teléfono para que abra sin internet.
 // Estrategia: primero lo guardado (rápido y funciona en la calle), y si no está,
 // se pide a la red. Al cambiar la versión, se borra lo viejo.
-const CACHE = 'citas-tio-v3';
+const CACHE = 'citas-tio-v4';
 const ARCHIVOS = [
   './',
   './index.html',
@@ -34,21 +34,6 @@ self.addEventListener('activate', (evento) => {
 self.addEventListener('fetch', (evento) => {
   const peticion = evento.request;
   if (peticion.method !== 'GET') return;
-
-  // Al abrir la app se pide primero a la red (para tener siempre la última
-  // versión) y, si no hay internet, se usa lo guardado.
-  if (peticion.mode === 'navigate') {
-    evento.respondWith(
-      fetch(peticion)
-        .then((respuesta) => {
-          const copia = respuesta.clone();
-          caches.open(CACHE).then((c) => c.put('./index.html', copia));
-          return respuesta;
-        })
-        .catch(() => caches.match('./index.html'))
-    );
-    return;
-  }
 
   evento.respondWith(
     caches.match(peticion).then((guardado) => {
