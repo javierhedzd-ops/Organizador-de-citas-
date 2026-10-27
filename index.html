@@ -117,6 +117,7 @@
   .tarjeta .editando-aviso { color: var(--acento); font-size: 0.8rem; font-weight: 600; margin-top: 8px; }
   .fila button.cancelar { flex: 0 0 auto; color: var(--suave); }
   .vacio { color: var(--suave); font-size: 0.9rem; margin-top: 22px; text-align: center; }
+  .aviso-arriba { background: #e8f5e9; border-left: 4px solid #2e7d32; color: #1b5e20; padding: 10px 12px; border-radius: 8px; margin: 10px 0; font-size: 15px; }
   .tarjeta.hecha { border-left-color: var(--suave); opacity: 0.8; }
   .tarjeta.hecha .cuando { text-decoration: line-through; }
   .acciones button.hecha { color: var(--suave); }
@@ -233,7 +234,7 @@
 <body>
   <h1>Citas del tío de Fer</h1>
   <p class="sub">Escribe la cita como se la mandarías por WhatsApp. El sistema la ordena y te da el botón de Maps.</p>
-  <p class="sub" id="version-pagina" style="font-size:12px; opacity:.7; margin-top:-6px;">versión 4</p>
+  <p class="sub" id="version-pagina" style="font-size:12px; opacity:.7; margin-top:-6px;">versión 5</p>
   <button class="instalar" id="instalar" style="display:none">Instalar en el teléfono</button>
 
   <label for="entrada">La cita</label>
@@ -242,6 +243,7 @@
     <button class="principal" id="agregar">Agregar cita</button>
   </div>
   <div class="ejemplos" id="ejemplos"></div>
+  <p class="aviso-arriba" id="aviso-arriba" style="display:none"></p>
   <div class="alerta-cruce" id="aviso-cruce"></div>
 
   <details id="caja-formulario">
@@ -717,10 +719,19 @@
 
   // Un aviso corto arriba del formulario (se va solo a los 4 segundos).
   let temporizadorAviso = null;
+  let temporizadorArriba = null;
   function avisar(texto) {
     const p = document.getElementById('aviso-editar');
     p.textContent = texto;
     p.style.display = 'block';
+    // También arriba, junto al botón: el formulario puede estar cerrado y el aviso no se vería.
+    const arriba = document.getElementById('aviso-arriba');
+    if (arriba) {
+      arriba.textContent = texto;
+      arriba.style.display = 'block';
+      clearTimeout(temporizadorArriba);
+      temporizadorArriba = setTimeout(() => { arriba.style.display = 'none'; }, 6000);
+    }
     // Si el formulario está cerrado, el aviso no se vería: se abre.
     if (cajaFormulario && !cajaFormulario.open) cajaFormulario.open = true;
     clearTimeout(temporizadorAviso);
@@ -877,11 +888,12 @@
       guardar(citas);
       entrada.value = '';
       pintar();
+      // Que se vea que sí entró: si no, parece que el botón no hizo nada.
+      const cuando = [cita.fechaBonita, cita.horaBonita].filter(Boolean).join(' a las ');
+      avisar(`Agregada: ${cita.cliente || 'sin nombre'}${cuando ? ' · ' + cuando : ''}${cita.lugar ? ' · ' + cita.lugar : ''}.`);
     } catch (e) {
       // Si algo falla, que se vea en pantalla en vez de quedarse en silencio.
-      const p = document.getElementById('aviso-editar');
-      p.textContent = 'No se pudo agregar la cita: ' + (e && e.message ? e.message : e);
-      p.style.display = 'block';
+      avisar('No se pudo agregar la cita: ' + (e && e.message ? e.message : e));
     }
   }
 

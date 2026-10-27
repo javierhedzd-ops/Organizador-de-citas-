@@ -33,6 +33,7 @@ const avisos = [];
 const confirmaciones = [];
 let respuestaConfirm = true;
 const descargas = [];
+const pendientes = []; // temporizadores que no se disparan solos (para ver el aviso antes de que se esconda)
 
 const document = {
   getElementById: (id) => elementos[id] || (elementos[id] = crearEl(id)),
@@ -54,7 +55,7 @@ const sandbox = {
   confirm: (t) => { confirmaciones.push(t); return respuestaConfirm; },
   prompt: () => null,
   alert: (t) => avisos.push(t),
-  setTimeout: (fn) => { fn(); return 1; },
+  setTimeout: (fn) => { pendientes.push(fn); return pendientes.length; },
   clearTimeout() {},
   navigator: { serviceWorker: { register: () => Promise.resolve() } },
   location: { protocol: 'https:', href: 'https://ejemplo/index.html' },
@@ -87,6 +88,9 @@ agregarTexto('sábado 3pm, colonia Chuburná, doña Mari');
 let guardadas = JSON.parse(almacen['citas-tio-fer'] || '[]');
 ok('se guarda la cita', guardadas.length === 1, JSON.stringify(guardadas));
 ok('la cita tiene cliente', guardadas[0] && guardadas[0].cliente === 'doña Mari', guardadas[0] && guardadas[0].cliente);
+
+ok('avisa que se agregó', /Agregada: doña Mari/.test(elementos['aviso-arriba'].textContent), elementos['aviso-arriba'].textContent);
+ok('el aviso de arriba se ve', elementos['aviso-arriba'].style.display !== 'none', String(elementos['aviso-arriba'].style.display));
 
 console.log('Página: choque de horario');
 const fecha = guardadas[0].fecha;

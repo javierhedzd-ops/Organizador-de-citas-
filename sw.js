@@ -1,7 +1,7 @@
 // Service worker: guarda la app en el teléfono para que abra sin internet.
 // Estrategia: primero lo guardado (rápido y funciona en la calle), y si no está,
 // se pide a la red. Al cambiar la versión, se borra lo viejo.
-const CACHE = 'citas-tio-v4';
+const CACHE = 'citas-tio-v5';
 const ARCHIVOS = [
   './',
   './index.html',
