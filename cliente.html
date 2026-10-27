@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pedir un servicio</title>
+<style>
+  :root {
+    --fondo: #0d1117;
+    --panel: #161b22;
+    --panel2: #1c2430;
+    --borde: #2a3441;
+    --texto: #e6edf3;
+    --suave: #8b98a5;
+    --acento: #4cc2ff;
+    --ok: #3fb950;
+    --error: #f85149;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0 auto;
+    max-width: 560px;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+    padding: 20px 16px 48px;
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .sub { color: var(--suave); font-size: 0.9rem; margin: 0 0 22px; }
+  label {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--texto);
+    margin-bottom: 6px;
+  }
+  .campo { margin-bottom: 14px; }
+  input, select, textarea {
+    width: 100%;
+    background: var(--panel);
+    color: var(--texto);
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 12px;
+    font: inherit;
+    min-height: 48px;
+  }
+  textarea { min-height: 76px; resize: vertical; }
+  input:focus, select:focus, textarea:focus {
+    outline: 2px solid var(--acento);
+    outline-offset: 1px;
+    border-color: transparent;
+  }
+  input::placeholder, textarea::placeholder { color: #6b7885; }
+  .fila { display: flex; gap: 10px; }
+  .fila .campo { flex: 1; min-width: 0; }
+  @media (max-width: 380px) {
+    .fila { flex-direction: column; gap: 0; }
+  }
+  button {
+    font: inherit;
+    font-weight: 700;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: var(--acento);
+    color: #04121c;
+    padding: 14px 18px;
+    cursor: pointer;
+    min-height: 50px;
+    width: 100%;
+  }
+  button:active { transform: scale(0.99); }
+  button:disabled { opacity: 0.5; }
+  .error {
+    color: var(--error);
+    font-size: 0.85rem;
+    margin: 0 0 12px;
+    display: none;
+  }
+  .error.visible { display: block; }
+  #aviso-copiado { color: var(--acento); }
+  .ayuda { font-size: 0.9rem; color: #a9b6c3; margin: 6px 0 0; }
+  .oculto { display: none; }
+  #c-tipo-otro { margin-top: 10px; }
+  button.ubicacion {
+    background: var(--panel2);
+    color: var(--texto);
+    border: 1px solid var(--borde);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .ubicacion-estado {
+    font-size: 0.85rem;
+    color: var(--suave);
+    margin: 0 0 14px;
+    display: none;
+  }
+  .ubicacion-estado.visible { display: block; }
+  .ubicacion-estado.ok { color: var(--ok); }
+  .nota {
+    font-size: 0.9rem;
+    color: #c3ccd6;
+    margin-top: 22px;
+    border-top: 1px solid var(--borde);
+    padding-top: 14px;
+  }
+  .paso2 { display: none; }
+  .paso2.visible { display: block; }
+  .resumen {
+    background: var(--panel);
+    border: 1px solid var(--borde);
+    border-left: 4px solid var(--ok);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+    white-space: pre-wrap;
+    font-size: 0.92rem;
+  }
+  .volver {
+    background: transparent;
+    color: var(--suave);
+    border: 1px solid var(--borde);
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="paso1" id="paso1">
+  <h1>Pedir un servicio</h1>
+  <p class="sub">Llena tus datos y le llega el mensaje al tío por WhatsApp. Él te confirma.</p>
+
+  <p class="error" id="error"></p>
+
+  <div class="campo">
+    <label for="c-nombre">Tu nombre</label>
+    <input type="text" id="c-nombre" placeholder="Doña Mari" autocomplete="name">
+  </div>
+
+  <div class="campo">
+    <label for="c-telefono">Tu teléfono</label>
+    <input type="tel" id="c-telefono" placeholder="9991234567" inputmode="tel" autocomplete="tel">
+  </div>
+
+  <div class="campo">
+    <label for="c-tipo">Qué necesitas</label>
+    <select id="c-tipo">
+      <option value="rezo">Rezo</option>
+      <option value="novena">Novena</option>
+      <option value="misa">Misa</option>
+      <option value="velorio">Velorio</option>
+      <option value="bautizo">Bautizo</option>
+      <option value="cumpleanos">Cumpleaños</option>
+      <option value="fiesta">Fiesta</option>
+      <option value="otro">Otro</option>
+    </select>
+    <input type="text" id="c-tipo-otro" class="oculto" placeholder="Escribe cuál" autocomplete="off">
+  </div>
+
+  <div class="campo">
+    <label for="c-fecha">¿Qué día? (escríbelo)</label>
+    <input type="text" id="c-fecha" placeholder="sábado 31 de octubre" autocomplete="off">
+    <p class="ayuda">Como se lo dirías a alguien: "mañana", "el sábado", "3 de noviembre".</p>
+  </div>
+
+  <div class="campo">
+    <label for="c-hora">¿A qué hora? (escríbela)</label>
+    <input type="text" id="c-hora" placeholder="3 de la tarde" autocomplete="off">
+    <p class="ayuda">"3pm", "a las 5", "mediodía".</p>
+  </div>
+
+  <div class="campo">
+    <label for="c-lugar">Dónde</label>
+    <input type="text" id="c-lugar" placeholder="Colonia Chuburná, calle 20" autocomplete="off">
+  </div>
+
+  <div class="campo">
+    <label for="c-referencia">Una referencia para llegar (opcional)</label>
+    <input type="text" id="c-referencia" placeholder="Portón verde, frente al parque" autocomplete="off">
+  </div>
+
+  <button class="ubicacion" id="usar-ubicacion" type="button">O mandar mi ubicación ahora</button>
+  <p class="ubicacion-estado" id="ubicacion-estado"></p>
+
+  <div class="campo">
+    <label for="c-nota">Algo que quieras decirle (opcional)</label>
+    <textarea id="c-nota" placeholder="Es para mi mamá, cumple años..."></textarea>
+  </div>
+
+  <button id="enviar">Mandar el mensaje al tío</button>
+
+  <p class="nota">No se cobra nada aquí. El tío te contesta por WhatsApp para confirmar la fecha y el precio.</p>
+</div>
+
+<div class="paso2" id="paso2">
+  <h1>Revisa tu mensaje</h1>
+  <p class="sub">Así le va a llegar al tío. Si algo está mal, regresa y corrígelo.</p>
+  <div class="resumen" id="resumen"></div>
+  <p class="error" id="aviso-copiado"></p>
+  <button id="abrir-whatsapp">Abrir WhatsApp y mandarlo</button>
+  <button class="volver" id="volver">Regresar y corregir</button>
+</div>
+
+<script>
+  // El número del tío. Se cambia aquí cuando lo tengamos.
+  // Formato: 52 + 10 dígitos, sin espacios ni signos.
+  const TELEFONO_TIO = '529998992171';
+
+  const paso1 = document.getElementById('paso1');
+  const paso2 = document.getElementById('paso2');
+  const cajaError = document.getElementById('error');
+  const resumen = document.getElementById('resumen');
+
+  const campos = {
+    nombre: document.getElementById('c-nombre'),
+    telefono: document.getElementById('c-telefono'),
+    tipo: document.getElementById('c-tipo'),
+    tipoOtro: document.getElementById('c-tipo-otro'),
+    fecha: document.getElementById('c-fecha'),
+    hora: document.getElementById('c-hora'),
+    lugar: document.getElementById('c-lugar'),
+    referencia: document.getElementById('c-referencia'),
+    nota: document.getElementById('c-nota'),
+  };
+
+  // La ubicación de Maps que el cliente decide mandar (o null si no mandó).
+  let ubicacion = null;
+
+  const NOMBRES_TIPO = {
+    rezo: 'Rezo', novena: 'Novena', misa: 'Misa', velorio: 'Velorio',
+    bautizo: 'Bautizo', cumpleanos: 'Cumpleaños', fiesta: 'Fiesta', otro: 'Servicio',
+  };
+
+  function fechaLarga(iso) {
+    if (!iso) return '';
+    const [a, m, d] = iso.split('-').map(Number);
+    const fecha = new Date(a, m - 1, d);
+    const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
+      'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    return `${dias[fecha.getDay()]} ${d} de ${meses[m - 1]}`;
+  }
+
+  function horaLarga(valor) {
+    if (!valor) return '';
+    const [h, min] = valor.split(':').map(Number);
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    const suf = h < 12 ? 'am' : 'pm';
+    return `${h12}:${String(min).padStart(2, '0')} ${suf}`;
+  }
+
+  function limpiarTelefono(t) {
+    return t.replace(/[\s\-().+]/g, '');
+  }
+
+  // Arma el texto que le llega al tío. Devuelve null si falta algo importante.
+  function armarMensaje() {
+    const nombre = campos.nombre.value.trim();
+    const telefono = limpiarTelefono(campos.telefono.value);
+    const fecha = campos.fecha.value.trim();
+    const hora = campos.hora.value.trim();
+    const lugar = campos.lugar.value.trim();
+    const referencia = campos.referencia.value.trim();
+    const nota = campos.nota.value.trim();
+    const esOtro = campos.tipo.value === 'otro';
+    const tipoOtro = campos.tipoOtro.value.trim();
+    const tipo = esOtro ? tipoOtro : (NOMBRES_TIPO[campos.tipo.value] || 'Servicio');
+
+    if (!nombre) return { error: 'Escribe tu nombre.' };
+    if (esOtro && !tipoOtro) return { error: 'Escribe qué servicio necesitas.' };
+    if (telefono.length < 10) return { error: 'Escribe tu teléfono de 10 dígitos.' };
+    if (!fecha) return { error: 'Escribe qué día.' };
+    if (!hora) return { error: 'Escribe a qué hora.' };
+    if (!lugar) return { error: 'Escribe dónde es.' };
+
+    const lineas = [
+      `Hola, quiero pedir un servicio.`,
+      ``,
+      `${tipo}: ${fecha} a las ${hora}`,
+      `Lugar: ${lugar}`,
+    ];
+    if (referencia) lineas.push(`Referencia: ${referencia}`);
+    if (ubicacion) lineas.push(`Ubicación en Maps: ${ubicacion}`);
+    lineas.push(
+      `A nombre de: ${nombre}`,
+      `Mi teléfono: ${telefono}`,
+    );
+    if (nota) lineas.push(``, `Nota: ${nota}`);
+    lineas.push(``, `¿Me confirma si tiene ese día?`);
+
+    return { texto: lineas.join('\n') };
+  }
+
+  function mostrarError(msg) {
+    cajaError.textContent = msg;
+    cajaError.classList.add('visible');
+  }
+
+  function ocultarError() {
+    cajaError.classList.remove('visible');
+  }
+
+  // Si eligen "Otro", aparece el campo para escribir cuál.
+  campos.tipo.addEventListener('change', () => {
+    const esOtro = campos.tipo.value === 'otro';
+    campos.tipoOtro.classList.toggle('oculto', !esOtro);
+    if (esOtro) campos.tipoOtro.focus();
+  });
+
+  // --- Mandar la ubicación de Maps ---
+  // No se pide sola: el cliente decide con el botón. Si no quiere, no pasa nada.
+  const botonUbicacion = document.getElementById('usar-ubicacion');
+  const estadoUbicacion = document.getElementById('ubicacion-estado');
+
+  function decirUbicacion(texto, ok) {
+    estadoUbicacion.textContent = texto;
+    estadoUbicacion.classList.add('visible');
+    estadoUbicacion.classList.toggle('ok', !!ok);
+  }
+
+  botonUbicacion.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      decirUbicacion('Tu teléfono no deja mandar la ubicación. Pega el enlace de Maps arriba.');
+      return;
+    }
+    botonUbicacion.disabled = true;
+    decirUbicacion('Buscando tu ubicación…');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lon = pos.coords.longitude.toFixed(6);
+        ubicacion = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+        botonUbicacion.disabled = false;
+        botonUbicacion.textContent = 'Ubicación lista ✓ (tocar para cambiarla)';
+        decirUbicacion('Ya va incluida en el mensaje.', true);
+      },
+      (err) => {
+        botonUbicacion.disabled = false;
+        const motivo = err && err.code === 1
+          ? 'No diste permiso de ubicación. Pega el enlace de Maps arriba.'
+          : 'No se pudo obtener la ubicación. Pega el enlace de Maps arriba.';
+        decirUbicacion(motivo);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+    );
+  });
+
+  document.getElementById('enviar').addEventListener('click', () => {
+    ocultarError();
+    const r = armarMensaje();
+    if (r.error) { mostrarError(r.error); return; }
+    resumen.textContent = r.texto;
+    paso1.style.display = 'none';
+    paso2.classList.add('visible');
+    window.scrollTo(0, 0);
+  });
+
+  document.getElementById('volver').addEventListener('click', () => {
+    paso2.classList.remove('visible');
+    paso1.style.display = '';
+  });
+
+  document.getElementById('abrir-whatsapp').addEventListener('click', () => {
+    const texto = resumen.textContent;
+    if (!TELEFONO_TIO) {
+      // Sin número no se puede mandar: se copia el mensaje y se avisa.
+      copiarTexto(texto);
+      return;
+    }
+    window.open(`https://wa.me/${TELEFONO_TIO}?text=${encodeURIComponent(texto)}`, '_blank');
+  });
+
+  // Copia el mensaje al portapapeles y avisa. Si el navegador no deja, se selecciona.
+  function copiarTexto(texto) {
+    const aviso = document.getElementById('aviso-copiado');
+    const listo = () => {
+      aviso.textContent = 'El número del tío todavía no está puesto. Tu mensaje ya está copiado: pégalo en WhatsApp.';
+      aviso.classList.add('visible');
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(listo).catch(() => seleccionarResumen());
+    } else {
+      seleccionarResumen();
+    }
+  }
+
+  function seleccionarResumen() {
+    const rango = document.createRange();
+    rango.selectNodeContents(resumen);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(rango);
+    const aviso = document.getElementById('aviso-copiado');
+    aviso.textContent = 'El número del tío todavía no está puesto. Copia el mensaje de arriba y pégalo en WhatsApp.';
+    aviso.classList.add('visible');
+  }
+</script>
+</body>
+</html>

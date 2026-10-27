@@ -17,6 +17,9 @@ const TIPOS = [
   { tipo: 'novena', palabras: ['novena', 'novenario'] },
   { tipo: 'misa', palabras: ['misa', 'funeral', 'entierro', 'sepelio'] },
   { tipo: 'rezo', palabras: ['rezo', 'rosario', 'rezadera', 'oracion', 'oración'] },
+  { tipo: 'bautizo', palabras: ['bautizo', 'bautismo'] },
+  { tipo: 'cumpleanos', palabras: ['cumpleanos', 'cumpleaños', 'cumple'] },
+  { tipo: 'fiesta', palabras: ['fiesta', 'quinceanera', 'quinceañera', 'xv anos', 'xv años', 'boda', 'graduacion', 'graduación'] },
 ];
 
 function sinAcentos(s) {
@@ -245,7 +248,75 @@ function horaBonita(hora, minuto) {
 function enlaceMaps(cita) {
   const partes = [cita.lugar, 'Mérida', 'Yucatán'].filter(Boolean);
   const q = encodeURIComponent(partes.join(', '));
-  return `https://www.google.com/maps/search/?api=1&query=${q}`;
+  // Con "dir" Maps abre la navegación con la ruta puesta: solo falta tocar "Iniciar".
+  return `https://www.google.com/maps/dir/?api=1&destination=${q}&travelmode=driving`;
+}
+
+// Lee las líneas con etiqueta del mensaje del formulario:
+// "Lugar: Chuburná", "A nombre de: doña Mari", "Mi teléfono: 9991234567",
+// "Rezo: sábado 31 de octubre a las 3 de la tarde", "Precio: $1500",
+// "Anticipo: 500", "Fecha: 2026-11-03", "Hora: 15:30".
+// Devuelve lo que encontró y el texto sin esas líneas (para leerlo como cita libre).
+function sacarCamposConEtiqueta(original) {
+  const datos = {
+    lugar: null, cliente: null, telefono: null, precio: null, anticipo: null,
+    fecha: null, hora: null, tipo: null, resto: original,
+  };
+  const sobran = [];
+
+  const lineas = original.split(/\r?\n/);
+  for (const linea of lineas) {
+    const m = linea.match(/^\s*([^:]{2,30}):\s*(.+?)\s*$/);
+    if (!m) continue;
+    const etiqueta = normalizar(m[1]).replace(/\s+/g, ' ').trim();
+    const valor = m[2].trim();
+    if (!valor) continue;
+
+    if (/^(lugar|direccion|donde|ubicacion)$/.test(etiqueta)) {
+      datos.lugar = valor;
+      sobran.push(linea);
+    } else if (/^(a nombre de|nombre|cliente|para)$/.test(etiqueta)) {
+      datos.cliente = valor;
+      sobran.push(linea);
+    } else if (/^(mi telefono|telefono|tel|cel|whatsapp)$/.test(etiqueta)) {
+      datos.telefono = valor.replace(/[\s\-().+]/g, '');
+      sobran.push(linea);
+    } else if (/^(precio|costo|cuanto)$/.test(etiqueta)) {
+      const n = valor.match(/\d{2,5}/);
+      if (n) datos.precio = Number(n[0]);
+      sobran.push(linea);
+    } else if (/^(anticipo|abono|enganche)$/.test(etiqueta)) {
+      const n = valor.match(/\d{1,5}/);
+      if (n) datos.anticipo = Number(n[0]);
+      sobran.push(linea);
+    } else if (/^(fecha|dia)$/.test(etiqueta)) {
+      // "2026-11-03" (como la escribe el formulario) o "3 de noviembre" o "sábado".
+      const iso = valor.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (iso) {
+        const d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+        const existe = d.getFullYear() === Number(iso[1]) && d.getMonth() === Number(iso[2]) - 1
+          && d.getDate() === Number(iso[3]);
+        if (existe) datos.fecha = aISO(d);
+        else datos.fechaInvalida = valor; // "2026-13-45": se avisa, no se inventa
+      } else {
+        const f = sacarFecha(normalizar(valor), new Date());
+        if (f.fecha) datos.fecha = f.fecha;
+      }
+      sobran.push(linea);
+    } else if (/^hora$/.test(etiqueta)) {
+      const h = sacarHora(normalizar(valor));
+      if (h) datos.hora = h;
+      sobran.push(linea);
+    } else if (/^(servicio|tipo|evento)$/.test(etiqueta)) {
+      const t = sacarTipo(normalizar(valor));
+      if (t) datos.tipo = t;
+      sobran.push(linea);
+    }
+  }
+
+  // Lo que no era una etiqueta conocida se queda para leerlo como cita libre.
+  datos.resto = lineas.filter((l) => !sobran.includes(l)).join('\n').trim();
+  return datos;
 }
 
 // La función principal.
@@ -254,16 +325,33 @@ function entender(texto, opciones = {}) {
   const original = String(texto || '').trim();
   const t = normalizar(original);
 
-  const hora = sacarHora(t);
-  const fecha = sacarFecha(t, hoy);
-  const lugar = sacarLugar(t, original);
-  const cliente = sacarCliente(original);
-  const telefono = sacarTelefono(original);
-  const tipo = sacarTipo(t);
-  const precio = sacarPrecio(original);
+  // El mensaje del formulario viene en varias líneas ("Lugar: Chuburná",
+  // "A nombre de: doña Mari"...). Se sacan primero esos datos y lo que sobra
+  // se lee como una cita escrita a mano.
+  const campos = sacarCamposConEtiqueta(original);
+  const resto = campos.resto;
+  const tResto = normalizar(resto);
+
+  // Lo que venga en una línea con etiqueta ("Fecha:", "Hora:") manda sobre lo
+  // que se adivine del texto libre.
+  const hora = campos.hora || sacarHora(t) || sacarHora(tResto);
+  const fecha = campos.fecha
+    ? { fecha: campos.fecha, comoSeDijo: 'Fecha:', dudosa: false }
+    : campos.fechaInvalida
+      ? { fecha: null, comoSeDijo: null, dudosa: true }
+      : (sacarFecha(t, hoy).fecha ? sacarFecha(t, hoy) : sacarFecha(tResto, hoy));
+  const lugar = campos.lugar
+    ? { lugar: campos.lugar, tipoLugar: null }
+    : sacarLugar(t, original);
+  const cliente = campos.cliente || sacarCliente(original);
+  const telefono = campos.telefono || sacarTelefono(original);
+  const tipo = campos.tipo || sacarTipo(t) || sacarTipo(tResto);
+  const precio = campos.precio || sacarPrecio(original);
+  const anticipo = campos.anticipo || 0;
 
   const dudas = [];
-  if (!fecha.fecha) dudas.push('No entendí la fecha. Escríbela así: "sábado" o "3 de noviembre".');
+  if (campos.fechaInvalida) dudas.push(`La fecha "${campos.fechaInvalida}" no existe. Escríbela así: 2026-11-03.`);
+  else if (!fecha.fecha) dudas.push('No entendí la fecha. Escríbela así: "sábado" o "3 de noviembre".');
   if (!hora) dudas.push('No entendí la hora. Escríbela así: "3pm" o "a las 4 de la tarde".');
   if (!lugar.lugar) dudas.push('No entendí el lugar. Escríbelo después de "en": "en colonia Chuburná".');
 
@@ -280,6 +368,7 @@ function entender(texto, opciones = {}) {
     telefono,
     tipo: tipo || 'rezo',
     precio,
+    anticipo,
     dudas,
     completa: dudas.length === 0,
   };
@@ -294,10 +383,7 @@ function ordenar(citas) {
   return [...citas].sort((a, b) => a.orden.localeCompare(b.orden));
 }
 
-// En la página no existe 'module': solo se exporta cuando corre en Node.
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { entender, ordenar, fechaBonita, horaBonita, enlaceMaps, normalizar };
-}
+module.exports = { entender, ordenar, fechaBonita, horaBonita, enlaceMaps, normalizar };
 
 // Para usarlo en la página (index.html) además de en Node.
 if (typeof window !== "undefined") {

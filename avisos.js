@@ -66,10 +66,51 @@ function textoAviso(citas, hoyISO, opciones = {}) {
   return lineas.join('\n');
 }
 
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { delDia, proximas, textoAviso, sumarDias };
+// --- Cuando se mueve o se cancela una cita ---
+// El problema de verdad del tío: si mueve una cita, tiene que avisar a los demás
+// del día. Esto arma ese mensaje. Sin IA: solo compara fechas y horas.
+
+// Las citas del mismo día que la movida, sin contarla a ella.
+// Se compara por referencia: dos citas a la misma hora son dos clientes distintos
+// y a los dos hay que avisarles.
+function companeras(citas, cita) {
+  if (!cita || !cita.fecha) return [];
+  return delDia(citas, cita.fecha).filter((c) => c !== cita);
 }
 
+// El mensaje para los demás clientes del día. Devuelve null si no hay a quién avisar.
+function textoMover(citas, cita, antes, despues) {
+  if (!cita || !antes || !despues) return null;
+  const otras = companeras(citas, cita);
+  if (!otras.length) return null;
+  const lineas = [
+    `Hola, le escribo del servicio de ${cita.tipo || 'música'}.`,
+    `Se movió la cita de las ${antes.horaBonita || 'sin hora'} a las ${despues.horaBonita || 'sin hora'} del ${despues.fechaBonita || 'mismo día'}.`,
+    '',
+    'Su cita sigue igual:',
+  ];
+  for (const c of otras) {
+    lineas.push(`• ${c.horaBonita || 'sin hora'} · ${c.cliente || 'sin nombre'} · ${c.lugar || 'sin lugar'}`);
+  }
+  lineas.push('');
+  lineas.push('Si le afecta, avíseme y lo acomodamos. ¡Gracias!');
+  return lineas.join('\n');
+}
+
+// El mensaje para el cliente de la cita cancelada.
+function textoCancelar(cita) {
+  if (!cita) return null;
+  const cuando = [cita.fechaBonita, cita.horaBonita].filter(Boolean).join(' a las ');
+  const lineas = [`Hola${cita.cliente ? ' ' + cita.cliente : ''}, le hablo del servicio de ${cita.tipo || 'música'}.`];
+  lineas.push(`Lamento avisarle que se canceló su cita${cuando ? ' del ' + cuando : ''}.`);
+  if (cita.anticipo) lineas.push('Le devuelvo su anticipo en cuanto me diga cómo prefiere.');
+  lineas.push('');
+  lineas.push('Disculpe las molestias. ¡Gracias por entender!');
+  return lineas.join('\n');
+}
+
+module.exports = { delDia, proximas, textoAviso, sumarDias, companeras, textoMover, textoCancelar };
+
 if (typeof window !== 'undefined') {
-  window.Avisos = { delDia, proximas, textoAviso, sumarDias };
+  window.Avisos = { delDia, proximas, textoAviso, sumarDias, companeras, textoMover, textoCancelar };
 }
