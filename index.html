@@ -420,9 +420,10 @@
 
   // Enlace de WhatsApp con el texto ya escrito. Sin número: WhatsApp pregunta a quién.
   // Con número (si algún día se guarda el del tío): wa.me/52<numero>?text=...
+  // Sin número se usa api.whatsapp.com/send, que es el que abre el selector de chat.
   function enlaceWhatsApp(texto, telefono) {
     const limpio = String(telefono || '').replace(/\D/g, '');
-    const base = limpio ? `https://wa.me/${limpio}` : 'https://wa.me/';
+    const base = limpio ? `https://wa.me/${limpio}` : 'https://api.whatsapp.com/send/';
     return `${base}?text=${encodeURIComponent(texto)}`;
   }
 
